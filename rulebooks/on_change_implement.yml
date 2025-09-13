@@ -7,12 +7,7 @@
         interval: 10
   rules:
     - name: Change moved to Implement
-      condition: >-
-        event.payload is defined and
-        event.payload.state is defined and
-        (event.payload.state | lower) == 'implement' and
-        event.payload.assignment_group is defined and
-        (event.payload.assignment_group | lower) == 'event driven ansible'
+      condition: event.meta is defined
       action:
         debug:
           msg: "Event received TEST: {{ event }}"
