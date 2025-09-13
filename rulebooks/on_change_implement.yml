@@ -1,0 +1,18 @@
+---
+- name: Listen for ServiceNow change Implement and run remediation
+  hosts: all
+  sources:
+    - servicenow.itsm.records:
+        table: change_request
+        interval: 10
+  rules:
+    - name: Change moved to Implement
+      condition: >-
+        event.payload is defined and
+        event.payload.state is defined and
+        (event.payload.state | lower) == 'implement' and
+        event.payload.assignment_group is defined and
+        (event.payload.assignment_group | lower) == 'event driven ansible'
+      action:
+        debug:
+          msg: "Event received TEST: {{ event }}"

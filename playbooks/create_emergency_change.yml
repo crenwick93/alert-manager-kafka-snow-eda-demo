@@ -1,0 +1,66 @@
+---
+- name: Create ServiceNow emergency change request
+  hosts: localhost
+  become: false
+  gather_facts: false
+  vars:
+    # ServiceNow connection is taken from environment variables set by env_script.sh
+    # Required env vars: SN_HOST, SN_USERNAME, SN_PASSWORD
+    wait_for_approval: false
+    approval_timeout_seconds: 900
+    advance_to_implement_on_approval: true
+
+    change_short_description: "Emergency change - TEST"
+    change_description: "Detected critical hardware failure on primary DB server; immediate replacement required."
+    change_impact: high
+    change_urgency: high
+    change_assignment_group: "Event Driven Ansible"
+    change_assigned_to: ""
+    change_start: ""
+    change_end: ""
+
+  tasks:
+    - name: Create emergency change request
+      servicenow.itsm.change_request:
+        instance:
+          host: "{{ lookup('env', 'SN_HOST') }}"
+          username: "{{ lookup('env', 'SN_USERNAME') }}"
+          password: "{{ lookup('env', 'SN_PASSWORD') }}"
+        state: new
+        type: emergency
+        short_description: "{{ change_short_description }}"
+        description: "{{ change_description }}"
+        impact: "{{ change_impact }}"
+        urgency: "{{ change_urgency }}"
+        assignment_group: "{{ change_assignment_group | default(omit) }}"
+      register: change
+
+    - name: Wait for approval (optional)
+      servicenow.itsm.change_request_info:
+        instance:
+          host: "{{ lookup('env', 'SN_HOST') }}"
+          username: "{{ lookup('env', 'SN_USERNAME') }}"
+          password: "{{ lookup('env', 'SN_PASSWORD') }}"
+        number: "{{ change.record.number }}"
+      register: change_info
+      until: (change_info.records | length) > 0 and (change_info.records[0].approval | lower) == 'approved'
+      retries: "{{ (approval_timeout_seconds // 15) | int }}"
+      delay: 15
+      when: wait_for_approval
+
+    - name: Move change to Implement after approval (optional)
+      servicenow.itsm.change_request:
+        instance:
+          host: "{{ lookup('env', 'SN_HOST') }}"
+          username: "{{ lookup('env', 'SN_USERNAME') }}"
+          password: "{{ lookup('env', 'SN_PASSWORD') }}"
+        number: "{{ change.record.number }}"
+        state: implement
+      when: wait_for_approval and advance_to_implement_on_approval
+
+    - name: Show change identifiers
+      ansible.builtin.debug:
+        msg:
+          - "Change number: {{ change.record.number | default('unknown') }}"
+          - "Change sys_id: {{ change.record.sys_id | default('unknown') }}"
+          - "Approval state: {{ (change_info.records[0].approval if (wait_for_approval | bool) else 'skipped') | default('unknown') }}"
