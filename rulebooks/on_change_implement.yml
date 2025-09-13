@@ -16,11 +16,17 @@
       # - ServiceNow 'state' is a choice-list; in many instances '-1' maps to the label 'Implement'.
       #   Confirm in your instance via sys_choice (table=change_request, element=state).
       # - 'assignment_group' below is a sys_id for stability. Use display_value only for logs.
-      condition: event.meta is defined
-        # all:
-        #   - event.state == '-1'  # << Implement
-        #   - event.approval == 'approved'
-        #   - event.assignment_group == '91b12d5b53c72610a33138f0a0490e52'  # << Event Driven Ansible
+      condition:
+        all:
+          - event.state == '-1'  # << Implement
+          - event.approval == 'approved'
+          - event.assignment_group == '91b12d5b53c72610a33138f0a0490e52'  # << Event Driven Ansible
       action:
         debug:
-          msg: "{{ event }}"
+          msg: |
+            Implement detected:
+            - number: {{ event.number | default('') }}
+            - sys_id: {{ event.sys_id | default('') }}
+            - state: {{ event.state | default('') }}
+            - approval: {{ event.approval | default('') }}
+            - assignment_group: {{ event.assignment_group | default('') }}
