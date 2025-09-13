@@ -10,7 +10,7 @@
     approval_timeout_seconds: 900
     advance_to_implement_on_approval: true
 
-    change_short_description: "Emergency change - TEST"
+    change_short_description: "Emergency change - TEST2"
     change_description: "Detected critical hardware failure on primary DB server; immediate replacement required."
     change_impact: high
     change_urgency: high
@@ -34,6 +34,16 @@
         urgency: "{{ change_urgency }}"
         assignment_group: "{{ change_assignment_group | default(omit) }}"
       register: change
+
+    - name: Move change to Authorize and request approval
+      servicenow.itsm.change_request:
+        instance:
+          host: "{{ lookup('env', 'SN_HOST') }}"
+          username: "{{ lookup('env', 'SN_USERNAME') }}"
+          password: "{{ lookup('env', 'SN_PASSWORD') }}"
+        number: "{{ change.record.number }}"
+        state: authorize
+        other: "{{ {'approval': 'requested'} }}"
 
     - name: Wait for approval (optional)
       servicenow.itsm.change_request_info:
