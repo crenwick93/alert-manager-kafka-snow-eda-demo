@@ -22,12 +22,5 @@
           # - event.approval == 'approved'
           - event.assignment_group == '91b12d5b53c72610a33138f0a0490e52'  # << Event Driven Ansible
       action:
-        debug:
-          msg: |
-            {% set e = (ansible_eda | default({})).get('event', {}) %}
-            Implement detected:
-            - number: {{ e.number | default('') }}
-            - sys_id: {{ e.sys_id | default('') }}
-            - state: {{ e.state | default('') }}
-            - approval: {{ e.approval | default('') }}
-            - assignment_group: {{ e.assignment_group | default('') }}
+        print_event:
+          pretty: true
