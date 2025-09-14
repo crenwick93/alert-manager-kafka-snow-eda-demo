@@ -6,11 +6,8 @@
   vars:
     # ServiceNow connection is taken from environment variables set by env_script.sh
     # Required env vars: SN_HOST, SN_USERNAME, SN_PASSWORD
-    wait_for_approval: false
-    approval_timeout_seconds: 900
-    advance_to_implement_on_approval: true
 
-    change_short_description: "Emergency change - TEST14"
+    change_short_description: "Emergency change - TEST15"
     change_description: "Detected critical hardware failure on primary DB server; immediate replacement required."
     change_impact: high
     change_urgency: high
@@ -19,7 +16,37 @@
     change_start: ""
     change_end: ""
 
+    # Incident fields
+    incident_short_description: "Prod alert - pre-change incident"
+    incident_description: "Opening incident associated with the automated emergency change."
+    incident_impact: high
+    incident_urgency: high
+    incident_assignment_group: "{{ change_assignment_group }}"
+
+    # Alertmanager fingerprint to correlate incident and change
+    alert_fingerprint: ""
+
   tasks:
+    - name: Create incident for the emergency change
+      servicenow.itsm.incident:
+        instance:
+          host: "{{ lookup('env', 'SN_HOST') }}"
+          username: "{{ lookup('env', 'SN_USERNAME') }}"
+          password: "{{ lookup('env', 'SN_PASSWORD') }}"
+        state: new
+        short_description: "{{ incident_short_description }}"
+        description: "{{ incident_description }}"
+        impact: "{{ incident_impact }}"
+        urgency: "{{ incident_urgency }}"
+        other: "{{ {'assignment_group': (incident_assignment_group | default(change_assignment_group)), 'correlation_id': (alert_fingerprint | default(''))} }}"
+      register: incident
+
+    - name: Show incident identifiers
+      ansible.builtin.debug:
+        msg:
+          - "Incident number: {{ incident.record.number | default('unknown') }}"
+          - "Incident sys_id: {{ incident.record.sys_id | default('unknown') }}"
+
     - name: Create emergency change request
       servicenow.itsm.change_request:
         instance:
@@ -33,6 +60,7 @@
         impact: "{{ change_impact }}"
         urgency: "{{ change_urgency }}"
         assignment_group: "{{ change_assignment_group | default(omit) }}"
+        other: "{{ {'parent': incident.record.sys_id, 'correlation_id': (alert_fingerprint | default('')), 'correlation_display': incident.record.number} }}"
       register: change
 
     - name: Move change to Authorize and request approval
@@ -46,32 +74,8 @@
         assignment_group: "{{ change_assignment_group }}"
         other: "{{ {'approval': 'requested'} }}"
 
-    - name: Wait for approval (optional)
-      servicenow.itsm.change_request_info:
-        instance:
-          host: "{{ lookup('env', 'SN_HOST') }}"
-          username: "{{ lookup('env', 'SN_USERNAME') }}"
-          password: "{{ lookup('env', 'SN_PASSWORD') }}"
-        number: "{{ change.record.number }}"
-      register: change_info
-      until: (change_info.records | length) > 0 and (change_info.records[0].approval | lower) == 'approved'
-      retries: "{{ (approval_timeout_seconds // 15) | int }}"
-      delay: 15
-      when: wait_for_approval
-
-    - name: Move change to Implement after approval (optional)
-      servicenow.itsm.change_request:
-        instance:
-          host: "{{ lookup('env', 'SN_HOST') }}"
-          username: "{{ lookup('env', 'SN_USERNAME') }}"
-          password: "{{ lookup('env', 'SN_PASSWORD') }}"
-        number: "{{ change.record.number }}"
-        state: implement
-      when: wait_for_approval and advance_to_implement_on_approval
-
     - name: Show change identifiers
       ansible.builtin.debug:
         msg:
           - "Change number: {{ change.record.number | default('unknown') }}"
           - "Change sys_id: {{ change.record.sys_id | default('unknown') }}"
-          - "Approval state: {{ (change_info.records[0].approval if (wait_for_approval | bool) else 'skipped') | default('unknown') }}"

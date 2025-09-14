@@ -1,0 +1,84 @@
+## Vector configuration to receive Alertmanager webhooks and forward based on mode
+
+[sources.alertmanager]
+type = "http_server"
+address = "0.0.0.0:{{ alertmanager_forwarder_port | default(9097) }}"
+path = "/"
+encoding = "json"
+
+{% if alertmanager_forwarder_mode | default('servicenow') == 'kafka' %}
+[sinks.kafka]
+type = "kafka"
+inputs = ["alertmanager"]
+bootstrap_servers = "{{ alertmanager_kafka_broker | default('localhost:9092') }}"
+topic = "{{ alertmanager_kafka_topic | default('alertmanager-alerts') }}"
+encoding.codec = "json"
+{% else %}
+# Transform the Alertmanager payload into a ServiceNow Incident body
+[transforms.to_servicenow]
+type = "remap"
+inputs = ["alertmanager"]
+source = '''
+  summary = "Alert from Alertmanager"
+  if exists(.body.commonAnnotations) && exists(.body.commonAnnotations.summary) {
+    summary = to_string(.body.commonAnnotations.summary)
+  } else if exists(.body.alerts) && length!(.body.alerts) > 0 && exists(.body.alerts[0].annotations) && exists(.body.alerts[0].annotations.summary) {
+    summary = to_string(.body.alerts[0].annotations.summary)
+  }
+
+  description = ""
+  if exists(.body.commonAnnotations) && exists(.body.commonAnnotations.description) {
+    description = to_string(.body.commonAnnotations.description)
+  } else if exists(.body.alerts) && length!(.body.alerts) > 0 && exists(.body.alerts[0].annotations) && exists(.body.alerts[0].annotations.description) {
+    description = to_string(.body.alerts[0].annotations.description)
+  }
+
+  env = if exists(.body.commonLabels.environment) { to_string(.body.commonLabels.environment) } else { null }
+  instance = if exists(.body.commonLabels.instance) { to_string(.body.commonLabels.instance) } else { null }
+  alertname = if exists(.body.commonLabels.alertname) { to_string(.body.commonLabels.alertname) } else { null }
+  severity_label = if exists(.body.commonLabels.severity) { to_string(.body.commonLabels.severity) } else { "warning" }
+
+  urgency = 3
+  if severity_label == "critical" { urgency = 1 }
+  else if severity_label == "high" { urgency = 2 }
+  else if severity_label == "warning" { urgency = 3 }
+  else if severity_label == "info" { urgency = 4 }
+
+  impact = 3
+
+  notes = format!(
+    "Alert: {alert}\nEnvironment: {env}\nInstance: {inst}\nStatus: {status}\nExternal URL: {ext}\nGenerator: {gen}",
+    {
+      "alert": alertname ?? "(unknown)",
+      "env": env ?? "(none)",
+      "inst": instance ?? "(unknown)",
+      "status": if exists(.body.status) { to_string(.body.status) } else { "(unknown)" },
+      "ext": if exists(.body.externalURL) { to_string(.body.externalURL) } else { "(n/a)" },
+      "gen": if exists(.body.alerts) && length!(.body.alerts) > 0 && exists(.body.alerts[0].generatorURL) { to_string(.body.alerts[0].generatorURL) } else { "(n/a)" }
+    }
+  )
+
+  description_out = if description != "" { description } else { summary }
+
+  . = {
+    "short_description": summary,
+    "description": description_out,
+    "urgency": to_string(urgency),
+    "impact": to_string(impact),
+    "work_notes": notes
+  }
+'''
+
+[sinks.servicenow]
+type = "http"
+inputs = ["to_servicenow"]
+uri = "{{ servicenow_instance_url }}/api/now/table/incident"
+method = "post"
+encoding.codec = "json"
+
+[sinks.servicenow.request.headers]
+Authorization = "Basic {{ (servicenow_username ~ ':' ~ servicenow_password) | b64encode }}"
+Content-Type = "application/json"
+Accept = "application/json"
+{% endif %}
+

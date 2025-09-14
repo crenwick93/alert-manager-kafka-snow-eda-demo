@@ -1,0 +1,5 @@
+[apps]
+nginx-web-app ansible_host=ec2-16-16-124-235.eu-north-1.compute.amazonaws.com
+
+[monitoring]
+prometheus-am ansible_host=ec2-16-16-216-106.eu-north-1.compute.amazonaws.com

@@ -1,0 +1,7 @@
+---
+
+- name: Install node exporter on application server
+  hosts: apps
+  become: true
+  roles:
+    - node_exporter
