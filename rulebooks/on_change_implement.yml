@@ -19,5 +19,8 @@
       # Use a single boolean expression to avoid cross-event aggregation (m_0/m_1).
       condition: event.state == '-1' and event.assignment_group == '91b12d5b53c72610a33138f0a0490e52'
       action:
-        print_event:
-          pretty: true
+        debug:
+          msg: |
+            Implement detected:
+            - number: {{ event.number }}
+            - work_start: {{ event.work_start }}
