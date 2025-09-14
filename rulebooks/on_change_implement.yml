@@ -25,8 +25,8 @@
         debug:
           msg: |
             Implement detected:
-            - number: {{ event.number | default('') }}
-            - sys_id: {{ event.sys_id | default('') }}
-            - state: {{ event.state | default('') }}
-            - approval: {{ event.approval | default('') }}
-            - assignment_group: {{ event.assignment_group | default('') }}
+            - number: {{ ansible_eda.event.number | default('') }}
+            - sys_id: {{ ansible_eda.event.sys_id | default('') }}
+            - state: {{ ansible_eda.event.state | default('') }}
+            - approval: {{ ansible_eda.event.approval | default('') }}
+            - assignment_group: {{ ansible_eda.event.assignment_group | default('') }}
