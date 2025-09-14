@@ -24,9 +24,10 @@
       action:
         debug:
           msg: |
+            {% set e = (ansible_eda | default({})).get('event', {}) %}
             Implement detected:
-            - number: {{ ansible_eda.event.number | default('') }}
-            - sys_id: {{ ansible_eda.event.sys_id | default('') }}
-            - state: {{ ansible_eda.event.state | default('') }}
-            - approval: {{ ansible_eda.event.approval | default('') }}
-            - assignment_group: {{ ansible_eda.event.assignment_group | default('') }}
+            - number: {{ e.number | default('') }}
+            - sys_id: {{ e.sys_id | default('') }}
+            - state: {{ e.state | default('') }}
+            - approval: {{ e.approval | default('') }}
+            - assignment_group: {{ e.assignment_group | default('') }}
