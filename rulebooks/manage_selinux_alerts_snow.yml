@@ -10,7 +10,6 @@
         sysparm_query: >
           assignment_group=91b12d5b53c72610a33138f0a0490e52^
           ORDERBYDESCsys_updated_on^ORDERBYDESCsys_id
-
       filters:
         - ansible.eda.json_filter:
         - ansible.eda.normalize_keys:
@@ -21,18 +20,18 @@
         once_within: 30 seconds
         group_by_attributes:
           - payload.incident.correlation_id
-      condition: event.meta is defined
+      condition: event.payload.u_environment is not defined
       action:
-        print_event:
+        debug:
+          msg: The environment is not defined
 
-    # # 1) Enrich incoming incidents with CMDB environment based on cmdb_ci. This is because there is no environment field in the incident table.
-    # - name: Enrich incident with CMDB environment
+    # 1) Enrich incoming incidents with CMDB environment based on cmdb_ci. This is because there is no environment field in the incident table.
+    # - name: Enrich incident with CMDB environment - Get Environment information to act appropriately
     #   throttle:
     #     once_within: 5 minutes
     #     group_by_attributes:
     #       - payload.incident.correlation_id
     #   condition: >
-    #     event.payload.assignment_group.display_value == "Event Driven Ansible" and
     #     (event.payload.environment is none or event.payload.environment == "")
     #   action:
     #     run_job_template:
