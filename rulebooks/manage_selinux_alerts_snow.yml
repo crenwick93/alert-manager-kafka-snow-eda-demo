@@ -19,8 +19,8 @@
       throttle:
         once_within: 30 seconds
         group_by_attributes:
-          - payload.incident.correlation_id
-      condition: event.payload.environment is not defined
+          - payload.correlation_id
+      condition: event.environment is not defined
       action:
         debug:
           msg: The environment is not defined
