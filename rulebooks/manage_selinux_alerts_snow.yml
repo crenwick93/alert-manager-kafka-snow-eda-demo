@@ -6,6 +6,14 @@
     - servicenow.itsm.records:
         table: incident
         interval: 10
+      # SERVER-SIDE FILTER (crucial at scale):
+        # - only incidents assigned to the EDA group
+        # - ignore already-closed (state=7)
+        # - stable ordering prevents dupes/skips when many rows share timestamps
+        sysparm_query: >
+          assignment_group.name=Event Driven Ansible^state!=7^
+          ORDERBYsys_updated_on^ORDERBYsys_id
+
       filters:
         - ansible.eda.json_filter:
         - ansible.eda.normalize_keys:
