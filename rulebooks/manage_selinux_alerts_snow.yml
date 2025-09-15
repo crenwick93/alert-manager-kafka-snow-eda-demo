@@ -16,11 +16,7 @@
   rules:
     # 0) Debug helper: print the whole event for testing
     - name: Debug incoming incident event
-      throttle:
-        once_within: 30 seconds
-        group_by_attributes:
-          - payload.correlation_id
-      condition: event.environment is not defined
+      condition: event.payload.environment is defined
       action:
         debug:
           msg: The environment is not defined
