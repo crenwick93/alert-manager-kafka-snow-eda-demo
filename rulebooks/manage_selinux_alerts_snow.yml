@@ -20,7 +20,7 @@
         once_within: 30 seconds
         group_by_attributes:
           - payload.incident.correlation_id
-      condition: event.payload.u_environment is not defined
+      condition: event.payload.environment is not defined
       action:
         debug:
           msg: The environment is not defined
